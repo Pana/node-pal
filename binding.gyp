@@ -4,8 +4,8 @@
             "target_name": "labeller",
             "sources": [
                 "src/nodepal.cc",
-                "src/pal/pal.cpp",
                 "src/pal/layer.cpp",
+                "src/pal/pal.cpp",
                 "src/pal/label.cpp",
                 "src/pal/feature.cpp",
                 "src/pal/Geom.cpp",
@@ -28,7 +28,8 @@
                         "GCC_ENABLE_CPP_EXCEPTIONS": "YES"
                     }
                 }]
-            ]
+            ],
+            "libraries": ["-lgeos_c"]
         }
     ]
 }

@@ -1,0 +1,32 @@
+{
+  "name": "node-pal",
+  "version": "0.0.0",
+  "description": "pal(label placement algorithm nodejs binding)",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {
+    "extend": "~1.2.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "npm test",
+    "install": "node-gyp rebuild"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/Pana/node-pal.git"
+  },
+  "keywords": [
+    "label",
+    "placement"
+  ],
+  "author": "Pana Wang",
+  "license": "MIT",
+  "gypfile": true,
+  "bugs": {
+    "url": "https://github.com/Pana/node-pal/issues"
+  },
+  "homepage": "https://github.com/Pana/node-pal"
+}

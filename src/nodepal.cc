@@ -9,7 +9,10 @@
 using namespace v8;
 using namespace std;
 
-pal::Units getUnit(Local<v8::String> unit){
+/*
+* 根据传入v8 string返回unit单位
+*/
+pal::Units getUnit(Local<String> unit){
     String::AsciiValue str(unit);
     if(strcmp(*str, "PIXEL") == 0){
         return pal::PIXEL;
@@ -24,7 +27,10 @@ pal::Units getUnit(Local<v8::String> unit){
     }
 }
 
-pal::SearchMethod getMethod(Local<v8::String> method){
+/*
+* 根据传入v8 string返回search 方法
+*/
+pal::SearchMethod getMethod(Local<String> method){
     String::AsciiValue str(method);
     if(strcmp(*str, "CHAIN") == 0){
         return pal::CHAIN;
@@ -39,7 +45,10 @@ pal::SearchMethod getMethod(Local<v8::String> method){
     }
 }
 
-pal::Arrangement getArrangement(Local<v8::String> arrangement){
+/*
+* 根据传入v8 string返回arrangement模式
+*/
+pal::Arrangement getArrangement(Local<String> arrangement){
     String::AsciiValue str(arrangement);
     if(strcmp(*str, "P_POINT") == 0){
         return pal::P_POINT;
@@ -56,51 +65,64 @@ pal::Arrangement getArrangement(Local<v8::String> arrangement){
     }
 }
 
+/*
+* 从对象中获取属性
+*/
+Handle<Value> getter(Local<Object> obj, char* key){
+    return obj->Get(String::New(key));
+}
+
+/*
+* v8 string转换成char *
+*/
 char *v8string2charp(Local<v8::String> str){
     String::AsciiValue name(str);
     return *name;
 }
 
+/*
+* labeller方法
+*/
 Handle<Value> Method(const Arguments& args) {
     HandleScope scope;
     Local<Object> config = args[0]->ToObject();
     Local<Array> toDeal = Local<Array>::Cast(args[1]);
 
+    // 初始化pal对象
     pal::Pal *pal = new pal::Pal();
-    pal::Units map_unit = getUnit(config->Get(String::New("mapUnit"))->ToString());
-    pal::SearchMethod method = getMethod(config->Get(String::New("searchMethod"))->ToString());
+    pal::Units map_unit = getUnit(getter(config, "mapUnit")->ToString());
+    pal::SearchMethod method = getMethod(getter(config, "searchMethod")->ToString());
     pal -> setSearch(method);
     pal -> setMapUnit(map_unit);
-    pal -> setDpi(config->Get(String::New("dpi"))->NumberValue());
-    pal -> setPointP(config->Get(String::New("pointP"))->NumberValue());
-    pal -> setLineP(config->Get(String::New("pointP"))->NumberValue());
-    pal -> setPolyP(config->Get(String::New("pointP"))->NumberValue());
+    pal -> setDpi(getter(config, "dpi")->NumberValue());
+    pal -> setPointP(getter(config, "pointP")->NumberValue());
+    pal -> setLineP(getter(config, "lineP")->NumberValue());
+    pal -> setPolyP(getter(config, "polyP")->NumberValue());
     
-
-    pal::Arrangement arrange;
-    arrange = pal::P_FREE;
 
     // 添加layer
     for(int i = 0; i < toDeal -> Length(); i++){
         Local<Object> layerData = toDeal->Get(i)->ToObject();
-        pal::Units layer_unit = getUnit(layerData->Get(String::New("unit"))->ToString());
-        pal::Arrangement layer_arrange = getArrangement(layerData->Get(String::New("arrange"))->ToString());
-        double priority = layerData->Get(String::New("priority"))->NumberValue();
-        bool isObstacle = layerData->Get(String::New("obstacle"))->ToBoolean()->Value();
-        char *name = v8string2charp(layerData->Get(String::New("name"))->ToString());
+        pal::Units layer_unit = getUnit(getter(layerData, "unit")->ToString());
+        pal::Arrangement layer_arrange = getArrangement(getter(layerData, "arrange")->ToString());
+        double priority = getter(layerData, "priority")->NumberValue();
+        bool isObstacle = getter(layerData, "obstacle")->ToBoolean()->Value();
+        char *name = v8string2charp(getter(layerData, "name")->ToString());
         pal::Layer * layer = pal -> addLayer(name, -1, -1, layer_arrange, layer_unit, priority, isObstacle, true, true);
 
+        // 添加feature
         Local<Array> features = Local<Array>::Cast(layerData->Get(String::New("features")));
         for(int j = 0; j < features -> Length(); j++){
             Local<Object> feature = features->Get(j)->ToObject();
-            Geom *geom = new Geom(v8string2charp(feature->Get(String::New("wkt"))->ToString()));
-            double width = feature->Get(String::New("width"))->NumberValue();
-            double height = feature->Get(String::New("height"))->NumberValue();
-            char *fid = v8string2charp(feature->Get(String::New("fid"))->ToString());
-            layer -> registerFeature(fid, geom, width, height);
+            Geom *geom = new Geom(v8string2charp(getter(feature, "wkt")->ToString()));
+            double width = getter(feature, "width")->NumberValue();
+            double height = getter(feature, "height")->NumberValue();
+            String::AsciiValue fid(getter(feature, "fid")->ToString());
+            layer -> registerFeature(*fid, geom, width, height);
         }
     }
 
+    // 设定bbox, 计算label
     Local<Array> v8bbox = Local<Array>::Cast(config->Get(String::New("bbox")));
     double xmin = v8bbox->Get(0)->NumberValue();
     double ymin = v8bbox->Get(1)->NumberValue();
@@ -110,7 +132,7 @@ Handle<Value> Method(const Arguments& args) {
     pal::PalStat * stats;
     std::list<pal::Label*> *labels = pal -> labeller(1, bbox, &stats, false);
     
-    // 传回数据
+    // 组装返回数据数组
     Handle<Array> label_arra = Array::New(labels->size());
     int index = 0;
     while(labels->size()>0){
@@ -135,6 +157,7 @@ Handle<Value> Method(const Arguments& args) {
         labels->pop_front();
     }
     
+    // 返回数据
     return scope.Close(label_arra);
 }
 
